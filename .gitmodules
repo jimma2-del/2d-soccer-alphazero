@@ -1,0 +1,3 @@
+[submodule "2d-soccer-rl"]
+	path = 2d-soccer-rl
+	url = https://github.com/jimma2-del/2d-soccer-rl.git
