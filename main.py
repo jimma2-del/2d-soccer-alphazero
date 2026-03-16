@@ -13,6 +13,8 @@ from core.training.loss_fns import az_default_loss_fn
 from core.training.train import Trainer
 import optax
 
+from os import path
+
 from soccer_env_interface import state_to_nn_input, step_fn, init_fn, N_ACTIONS
 
 resnet = AZResnet(AZResnetConfig(
@@ -53,9 +55,11 @@ trainer = Trainer(
     #     TwoPlayerBaseline(num_episodes=128, baseline_evaluator=baseline_az, render_fn=render_fn, render_dir='.', name='pretrained'),
     #     TwoPlayerBaseline(num_episodes=128, baseline_evaluator=greedy_az, render_fn=render_fn, render_dir='.', name='greedy'),
     # ],
+    testers = [],
     # evaluator_test = az_evaluator_test,
-    # data_transform_fns=transforms
-    # wandb_project_name = 'turbozero-othello' 
+    # data_transform_fns=transforms,
+    # wandb_project_name = 'turbozero-othello' ,
+    ckpt_dir = path.join(path.dirname(path.realpath(__file__)), "tmp", "checkpoints")
 )
 
 output = trainer.train_loop(seed=0, num_epochs=100, eval_every=5)
