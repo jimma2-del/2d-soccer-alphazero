@@ -86,27 +86,34 @@ def step_fn(state: State, action):
     )
 
 def state_to_nn_input(state):
-    width = game._cached_consts.window_size[1]
+    '''Output Shape: (2, 2*PLAYERS_PER_TEAM + 1, 2) --> ([pos, vel], objects, [y, x])'''
     game_state = state.game_state
 
-    return jax.lax.cond(state.cur_player_id==0,
-        lambda: jnp.vstack((
-            game_state.ball_pos,
-            game_state.ball_vel,
-            game_state.left_player_pos,
-            game_state.left_player_vel,
-            game_state.right_player_pos,
-            game_state.right_player_vel
-        )),
-        lambda: jnp.vstack((
-            width - game_state.ball_pos,
-            -game_state.ball_vel,
-            width - game_state.right_player_pos,
-            -game_state.right_player_vel,
-            width - game_state.left_player_pos,
-            -game_state.left_player_vel
-        ))
-    )
+    pos = jnp.vstack((
+        game_state.ball_pos,
+        game_state.left_player_pos,
+        game_state.right_player_pos,
+    ))
+
+    # center pos around center of game area
+    pos = pos - jnp.array(game._cached_consts.center, dtype=jnp.float32)
+
+    vel = jnp.vstack((
+        game_state.ball_vel,
+        game_state.left_player_vel,
+        game_state.right_player_vel
+    ))
+
+    comb = jnp.stack((pos, vel), axis=0)
+
+    # flip x-coord if on the other team
+    comb = jax.lax.cond(state.cur_player_id == 0,
+        lambda: comb, lambda: comb.at[:, :, 1].multiply(-1))
+
+    # normalize
+    comb = comb / jnp.array(game.get_settings().field_size, dtype=jnp.float32) * 2
+
+    return comb
 
 # def flip_y_transform_fn(mask, policy, state):
 #     # flip obs positions y-cooridinate about center horizontal axis
