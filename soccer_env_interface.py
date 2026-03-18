@@ -5,9 +5,10 @@ from jax import numpy as jnp
 
 from core.types import StepMetadata
 
-PLAYERS_PER_TEAM = 2
+PLAYERS_PER_TEAM = 1#2
+    # keep 1 or 2; 3 is starting to be too much
 
-N_ACTIONS = 3*3*2 * PLAYERS_PER_TEAM
+N_ACTIONS = (3*3*2) ** PLAYERS_PER_TEAM
 ACTION_MASK = jnp.ones((N_ACTIONS), dtype=jnp.bool)
 
 def nn_output_to_game_action(action):
@@ -106,3 +107,23 @@ def state_to_nn_input(state):
             -game_state.left_player_vel
         ))
     )
+
+# def flip_y_transform_fn(mask, policy, state):
+#     # flip obs positions y-cooridinate about center horizontal axis
+#     pos_rows = (0,*range(2,2+PLAYERS_PER_TEAM),*range(2+2*PLAYERS_PER_TEAM,2+3*PLAYERS_PER_TEAM))
+#     new_obs = state.observation.at[pos_rows,0].set(game._cached_consts.window_size[0] - state.observation[pos_rows,0])
+
+#     # flip (negative) obs velocities y-coordinate
+#     vel_rows = (1,*range(2,2+2*PLAYERS_PER_TEAM),*range(2+3*PLAYERS_PER_TEAM,2+4*PLAYERS_PER_TEAM))
+#     new_obs = new_obs.at[vel_rows].set(-new_obs[vel_rows])
+
+#     # remap action: flip (negative) moves y-coordinate
+#     shape = (3,3,2) * PLAYERS_PER_TEAM
+    
+#     idxs = jnp.arange(N_ACTIONS).reshape(shape, order='F')
+    
+
+#     new_policy = policy[..., jnp.ravel_multi_index(coords, shape, order='F')]
+#     return mask, new_policy, state.replace(observation=new_obs)
+    
+# transforms = [flip_y_transform_fn]    

@@ -619,10 +619,12 @@ class Trainer:
         # training loop
         while cur_epoch < num_epochs:
             # collect self-play games
+            print("COLLECTING")
             collect_key, key = jax.random.split(key)
             collect_keys = partition(jax.random.split(collect_key, self.batch_size), self.num_devices)
             collection_state = collect(collect_keys, collection_state, params, self.collection_steps_per_epoch)
             # train
+            print("TRAINING")
             train_key, key = jax.random.split(key)
             collection_state, train_state, metrics = self.train_steps(train_key, collection_state, train_state, self.train_steps_per_epoch)
             # log metrics
@@ -631,6 +633,8 @@ class Trainer:
 
             # test 
             if cur_epoch % eval_every == 0:
+                print("TESTING")
+                
                 params = self.extract_model_params_fn(train_state)
                 for i, test_state in enumerate(tester_states):
                     run_key, key = jax.random.split(key)
@@ -646,6 +650,7 @@ class Trainer:
                     tester_states[i] = new_test_state
             # save checkpoint
             # make sure previous save task has finished 
+            print("SAVING")
             self.checkpoint_manager.wait_until_finished()
             self.save_checkpoint(train_state, cur_epoch)
             # next epoch

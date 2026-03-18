@@ -1,0 +1,105 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            9b40q828jr6rnix0tys691al39215kof:
+                codePath: main.py
+                codePathLocal: main.py
+                cpu_count: 24
+                cpu_count_logical: 24
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "123690532864"
+                        used: "96681390080"
+                email: jimma2@illinois.edu
+                executable: /home/jimma2/.conda/envs/turbozero-soccer/bin/python
+                git:
+                    commit: 11e3a83211519975b358726d5b3db5e16d71e217
+                    remote: https://github.com/jimma2-del/2d-soccer-alphazero.git
+                gpu: NVIDIA A100-SXM4-80GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "85899345920"
+                      name: NVIDIA A100-SXM4-80GB
+                      uuid: GPU-4a108002-8f58-46fb-1913-97190ca4384e
+                host: jupyter-jimma2
+                memory:
+                    total: "242777104384"
+                os: Linux-6.8.0-106-generic-x86_64-with-glibc2.39
+                program: /home/jimma2/2d-soccer-alphazero/main.py
+                python: CPython 3.10.20
+                root: /home/jimma2/2d-soccer-alphazero
+                startedAt: "2026-03-18T17:28:48.667768Z"
+                writerId: 9b40q828jr6rnix0tys691al39215kof
+        m: []
+        python_version: 3.10.20
+        t:
+            "1":
+                - 12
+                - 45
+            "2":
+                - 12
+                - 45
+            "3":
+                - 16
+                - 61
+            "4": 3.10.20
+            "5": 0.25.1
+            "12": 0.25.1
+            "13": linux-x86_64
+batch_size:
+    value: 4
+collection_steps_per_epoch:
+    value: 256
+evaluator_test:
+    value: AlphaZero(MCTS)
+evaluator_test_config:
+    value:
+        action_selection_config:
+            c: 1
+            epsilon: 1e-08
+            q_transform: normalize_q_values
+        branching_factor: 18
+        dirichlet_alpha: 0.3
+        dirichlet_epsilon: 0.25
+        discount: -1
+        eval_fn: eval_fn
+        max_nodes: 513
+        num_iterations: 512
+        persist_tree: true
+        temperature: 0
+        tiebreak_noise: 1e-08
+evaluator_train:
+    value: AlphaZero(MCTS)
+evaluator_train_config:
+    value:
+        action_selection_config:
+            c: 1
+            epsilon: 1e-08
+            q_transform: normalize_q_values
+        branching_factor: 18
+        dirichlet_alpha: 0.3
+        dirichlet_epsilon: 0.25
+        discount: -1
+        eval_fn: eval_fn
+        max_nodes: 257
+        num_iterations: 256
+        persist_tree: true
+        temperature: 1
+        tiebreak_noise: 1e-08
+memory_buffer:
+    value: EpisodeReplayBuffer
+memory_buffer_config:
+    value:
+        capacity: 1000
+num_devices:
+    value: 1
+train_batch_size:
+    value: 512
+train_steps_per_epoch:
+    value: 64
+warmup_steps:
+    value: 0

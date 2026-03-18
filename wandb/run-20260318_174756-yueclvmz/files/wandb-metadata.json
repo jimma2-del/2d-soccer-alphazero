@@ -1,0 +1,40 @@
+{
+  "os":  "Linux-6.8.0-106-generic-x86_64-with-glibc2.39",
+  "python":  "CPython 3.10.20",
+  "startedAt":  "2026-03-18T17:47:56.282319Z",
+  "program":  "/home/jimma2/2d-soccer-alphazero/hello_world_othello.py",
+  "codePath":  "hello_world_othello.py",
+  "codePathLocal":  "hello_world_othello.py",
+  "git":  {
+    "remote":  "https://github.com/jimma2-del/2d-soccer-alphazero.git",
+    "commit":  "11e3a83211519975b358726d5b3db5e16d71e217"
+  },
+  "email":  "jimma2@illinois.edu",
+  "root":  "/home/jimma2/2d-soccer-alphazero",
+  "host":  "jupyter-jimma2",
+  "executable":  "/home/jimma2/.conda/envs/turbozero-soccer/bin/python",
+  "cpu_count":  24,
+  "cpu_count_logical":  24,
+  "gpu":  "NVIDIA A100-SXM4-80GB",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "123690532864",
+      "used":  "96681062400"
+    }
+  },
+  "memory":  {
+    "total":  "242777104384"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA A100-SXM4-80GB",
+      "memoryTotal":  "85899345920",
+      "cudaCores":  6912,
+      "architecture":  "Ampere",
+      "uuid":  "GPU-4a108002-8f58-46fb-1913-97190ca4384e"
+    }
+  ],
+  "cudaVersion":  "12.8",
+  "writerId":  "y1aq0thqwnii49gx4pvcgvxicrul1poq"
+}
