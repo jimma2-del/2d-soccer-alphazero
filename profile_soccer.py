@@ -9,24 +9,18 @@ def profile(
     num_steps: int = 1000, 
     batch_size: int = 1024
 ):
-    # 1. Setup Vectorized functions
-    v_reset = jax.vmap(init_fn)
-    v_step = jax.vmap(step_fn)
-
-    # 2. Define the Scan Body
     def rollout_step(carry, unused_input):
         state, key = carry
         key, action_key = jax.random.split(key)
-        action = random.randint(action_key, (batch_size), 0, N_ACTIONS)
-        next_state, metadata = v_step(state, action)
-        return (next_state, key), None
+        action = jax.random.randint(action_key, (), 0, N_ACTIONS)
+        next_state, metadata = step_fn(state, action)
+        key, reset_key = jax.random.split(key)
+        return (jax.lax.cond(metadata.terminated, lambda: init_fn(reset_key)[0], lambda: next_state), key), None
 
-    # 3. JIT Compile the entire sequence
-    @jax.jit
+    @jax.vmap
     def run_trajectory(key):
         init_key, loop_key = jax.random.split(key)
-        # Reset all envs in the batch
-        initial_state, metadata = v_reset(jax.random.split(init_key, batch_size))
+        initial_state, metadata = init_fn(init_key)
         # Scan over num_steps
         (final_state, _), _ = jax.lax.scan(
             rollout_step, 
@@ -36,16 +30,20 @@ def profile(
         )
         return final_state
 
+    key = jax.random.PRNGKey(42)
+    
     # 4. Warm-up
     print(f"Compiling for batch size {batch_size}...")
-    main_key = jax.random.PRNGKey(42)
-    _ = run_trajectory(main_key)
+    key, warm_up_key = jax.random.split(key)
+    keys = jax.random.split(warm_up_key, batch_size)
+    _ = run_trajectory(keys)
     jax.block_until_ready(_)
 
     # 5. Timing
     print(f"Profiling {num_steps} steps...")
+    keys = jax.random.split(key, batch_size)
     start = time.perf_counter()
-    _ = run_trajectory(main_key)
+    _ = run_trajectory(keys)
     jax.block_until_ready(_)
     end = time.perf_counter()
 

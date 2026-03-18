@@ -48,17 +48,17 @@ az_evaluator_test = AlphaZero(MCTS)(
 replay_memory = EpisodeReplayBuffer(capacity=1000)
 
 trainer = Trainer(
-    batch_size = 4,#1024,#4096,#1024,
-    train_batch_size = 512,#4096,
+    batch_size = 1024,
+    train_batch_size = 4096,
     warmup_steps = 0,
-    collection_steps_per_epoch = 256,#512,#256,
+    collection_steps_per_epoch = 512,#256,
     train_steps_per_epoch = 64,
     nn = resnet,
     loss_fn = partial(az_default_loss_fn, l2_reg_lambda = 0.0),
     optimizer = optax.adam(1e-3),
     evaluator = az_evaluator,
     memory_buffer = replay_memory,
-    max_episode_steps = 512,#600,#80,
+    max_episode_steps = 512,#600,#80, # avoid possible infinite loops?
     env_step_fn = step_fn,
     env_init_fn = init_fn,
     state_to_nn_input_fn=state_to_nn_input,
@@ -66,8 +66,8 @@ trainer = Trainer(
     #     TwoPlayerBaseline(num_episodes=128, baseline_evaluator=baseline_az, render_fn=render_fn, render_dir='.', name='pretrained'),
     #     TwoPlayerBaseline(num_episodes=128, baseline_evaluator=greedy_az, render_fn=render_fn, render_dir='.', name='greedy'),
     # ],
-    #testers = [],
-    testers=[TwoPlayerTester(num_episodes=64)],
+    testers = [],
+    #testers=[TwoPlayerTester(num_episodes=64)],
     evaluator_test = az_evaluator_test,
     # data_transform_fns=transforms,
     wandb_project_name = 'turbozero-soccer' ,
