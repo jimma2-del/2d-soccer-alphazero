@@ -17,7 +17,7 @@ import optax
 from os import path
 import jax
 
-from soccer_env_interface import state_to_nn_input, step_fn, init_fn, N_ACTIONS
+from soccer_env_interface import state_to_nn_input, step_fn, init_fn, N_ACTIONS, transforms
 
 resnet = SimpleResNetMLP(
     policy_head_out_size=N_ACTIONS,
@@ -69,7 +69,7 @@ trainer = Trainer(
     testers = [],
     #testers=[TwoPlayerTester(num_episodes=64)],
     evaluator_test = az_evaluator_test,
-    # data_transform_fns=transforms,
+    data_transform_fns=transforms,
     wandb_project_name = 'turbozero-soccer' ,
     ckpt_dir = path.join(path.dirname(path.realpath(__file__)), "tmp", "checkpoints")
 )

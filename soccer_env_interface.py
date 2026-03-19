@@ -115,22 +115,27 @@ def state_to_nn_input(state):
 
     return comb
 
-# def flip_y_transform_fn(mask, policy, state):
-#     # flip obs positions y-cooridinate about center horizontal axis
-#     pos_rows = (0,*range(2,2+PLAYERS_PER_TEAM),*range(2+2*PLAYERS_PER_TEAM,2+3*PLAYERS_PER_TEAM))
-#     new_obs = state.observation.at[pos_rows,0].set(game._cached_consts.window_size[0] - state.observation[pos_rows,0])
+def flip_y_transform_fn(mask, policy, state):
+    # flip observation y-cooridinate 
+    new_obs = state.observation.at[:,:,0].multiply(-1)
 
-#     # flip (negative) obs velocities y-coordinate
-#     vel_rows = (1,*range(2,2+2*PLAYERS_PER_TEAM),*range(2+3*PLAYERS_PER_TEAM,2+4*PLAYERS_PER_TEAM))
-#     new_obs = new_obs.at[vel_rows].set(-new_obs[vel_rows])
+    # remap action: swap move up and move down
 
-#     # remap action: flip (negative) moves y-coordinate
-#     shape = (3,3,2) * PLAYERS_PER_TEAM
-    
-#     idxs = jnp.arange(N_ACTIONS).reshape(shape, order='F')
-    
+    #static
+    idxs = jnp.arange(N_ACTIONS)
+    new_idxs = idxs
 
-#     new_policy = policy[..., jnp.ravel_multi_index(coords, shape, order='F')]
-#     return mask, new_policy, state.replace(observation=new_obs)
+    for i in range(PLAYERS_PER_TEAM):
+        move_up_mask = (idxs // 18**i) % 3 == 0
+        move_down_mask = (idxs // 18**i) % 3 == 2
+
+        new_idxs = new_idxs.at[move_up_mask].set(new_idxs[move_down_mask])
+            .at[move_down_mask].set(new_idxs[move_up_mask]) # swap
+
+    # dynamic: swap policy elements to new indices
+    policy = jnp.empty_like(policy).at[new_idxs].set(policy)
+            .at[move_down_mask].set(policy[move_up_mask])
+
+    return mask, policy, state.replace(observation=new_obs)
     
-# transforms = [flip_y_transform_fn]    
+transforms = [flip_y_transform_fn]    
