@@ -45,14 +45,14 @@ az_evaluator_test = AlphaZero(MCTS)(
     temperature = 0.0
 )
 
-replay_memory = EpisodeReplayBuffer(capacity=1000)
+replay_memory = EpisodeReplayBuffer(capacity=2000)#1000)
 
 trainer = Trainer(
     batch_size = 1024,
     train_batch_size = 4096,
     warmup_steps = 0,
     collection_steps_per_epoch = 512,#256,
-    train_steps_per_epoch = 64,
+    train_steps_per_epoch = 128,#64,
     nn = resnet,
     loss_fn = partial(az_default_loss_fn, l2_reg_lambda = 0.0),
     optimizer = optax.adam(1e-3),
@@ -70,7 +70,7 @@ trainer = Trainer(
     #testers=[TwoPlayerTester(num_episodes=64)],
     evaluator_test = az_evaluator_test,
     data_transform_fns=transforms,
-    wandb_project_name = 'turbozero-soccer' ,
+    #wandb_project_name = 'turbozero-soccer' ,
     ckpt_dir = path.join(path.dirname(path.realpath(__file__)), "tmp", "checkpoints")
 )
 

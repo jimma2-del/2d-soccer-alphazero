@@ -115,27 +115,34 @@ def state_to_nn_input(state):
 
     return comb
 
+#static consts for transform fn
+flip_y_transform_fn_action_idxs = jnp.arange(N_ACTIONS)
+flip_y_transform_fn_action_new_idxs = flip_y_transform_fn_action_idxs
+
+for i in range(PLAYERS_PER_TEAM):
+    move_up_mask = (flip_y_transform_fn_action_idxs // 18**i) % 3 == 0
+    move_down_mask = (flip_y_transform_fn_action_idxs // 18**i) % 3 == 2
+
+    flip_y_transform_fn_action_new_idxs = flip_y_transform_fn_action_new_idxs \
+        .at[move_up_mask].set(flip_y_transform_fn_action_new_idxs[move_down_mask]) \
+        .at[move_down_mask].set(flip_y_transform_fn_action_new_idxs[move_up_mask]) # swap    
+
 def flip_y_transform_fn(mask, policy, state):
     # flip observation y-cooridinate 
-    new_obs = state.observation.at[:,:,0].multiply(-1)
+    new_game_state = state.game_state.replace(
+        left_player_pos=state.game_state.left_player_pos.at[0].multiply(-1),
+        right_player_pos=state.game_state.right_player_pos.at[0].multiply(-1),
+        ball_pos=state.game_state.ball_pos.at[0].multiply(-1),
+        left_player_vel=state.game_state.left_player_vel.at[0].multiply(-1),
+        right_player_vel=state.game_state.right_player_vel.at[0].multiply(-1),
+        ball_vel=state.game_state.ball_vel.at[0].multiply(-1)
+    )
 
     # remap action: swap move up and move down
 
-    #static
-    idxs = jnp.arange(N_ACTIONS)
-    new_idxs = idxs
-
-    for i in range(PLAYERS_PER_TEAM):
-        move_up_mask = (idxs // 18**i) % 3 == 0
-        move_down_mask = (idxs // 18**i) % 3 == 2
-
-        new_idxs = new_idxs.at[move_up_mask].set(new_idxs[move_down_mask])
-            .at[move_down_mask].set(new_idxs[move_up_mask]) # swap
-
     # dynamic: swap policy elements to new indices
-    policy = jnp.empty_like(policy).at[new_idxs].set(policy)
-            .at[move_down_mask].set(policy[move_up_mask])
+    policy = jnp.empty_like(policy).at[flip_y_transform_fn_action_new_idxs].set(policy)
 
-    return mask, policy, state.replace(observation=new_obs)
+    return mask, policy, state.replace(game_state=new_game_state)
     
 transforms = [flip_y_transform_fn]    

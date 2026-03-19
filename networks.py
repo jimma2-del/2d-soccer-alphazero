@@ -23,12 +23,13 @@ class SimpleResNetMLP(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, train: bool = True):
-        # flatten the input
-        x = x.reshape((-1))
+        # NOTE: x is BATCHED; first axis is batch dim
+        # flatten the input (so that batch axis is the only other axis)
+        batch_size = x.shape[0]
+        x = x.reshape((batch_size, -1))
 
         # shared backbone
         x = nn.Dense(self.hidden_dim)(x)
-        x = nn.BatchNorm(use_running_average=not train)(x)
         x = nn.relu(x)
         
         # residual blocks
