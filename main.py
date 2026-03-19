@@ -18,6 +18,7 @@ from os import path
 import jax
 
 from soccer_env_interface import state_to_nn_input, step_fn, init_fn, N_ACTIONS, transforms
+from baselines import ball_dist_to_goal_eval_fn, player_ball_goal_dist_eval_fn
 
 resnet = SimpleResNetMLP(
     policy_head_out_size=N_ACTIONS,
@@ -27,23 +28,27 @@ resnet = SimpleResNetMLP(
 
 # alphazero can take an arbirary search `backend`
 # here we use classic MCTS
-az_evaluator = AlphaZero(MCTS)(
-    eval_fn = make_nn_eval_fn(resnet, state_to_nn_input),
-    num_iterations = 64,#256,#32,
-    max_nodes = 65,#257,#40,
-    branching_factor = N_ACTIONS,
-    action_selector = PUCTSelector(),
-    temperature = 1.0
-)
+def make_az_evaluator(eval_fn, testing=False):
+    NUM_ITERATIONS = 64,#256,#32,
+    MAX_NODES = 65,#257,#40,
 
-az_evaluator_test = AlphaZero(MCTS)(
-    eval_fn = make_nn_eval_fn(resnet, state_to_nn_input),
-    num_iterations = 128,#512,#64,
-    max_nodes = 129,#513,#80,
-    branching_factor = N_ACTIONS,
-    action_selector = PUCTSelector(),
-    temperature = 0.0
-)
+    NUM_ITERATIONS_TESTING = 128,#512,#64,
+    MAX_NODES_TESTING = 129,#513,#80,
+    
+    return AlphaZero(MCTS)(
+        eval_fn = eval_fn,
+        num_iterations = NUM_ITERATIONS_TESTING if testing else NUM_ITERATIONS,
+        max_nodes = MAX_NODES_TESTING if testing else MAX_NODES,
+        branching_factor = N_ACTIONS,
+        action_selector = PUCTSelector(),
+        temperature = 0.0 if testing else 1.0
+    )
+    
+az_evaluator = make_az_evaluator(make_nn_eval_fn(resnet, state_to_nn_input), testing=False)
+az_evaluator_test = make_az_evaluator(make_nn_eval_fn(resnet, state_to_nn_input), testing=True)
+
+# baselines
+player_ball_goal_dist_evaluator = make_az_evaluator(player_ball_goal_dist_eval_fn, testing=True)
 
 replay_memory = EpisodeReplayBuffer(capacity=2000)#1000)
 
@@ -62,11 +67,12 @@ trainer = Trainer(
     env_step_fn = step_fn,
     env_init_fn = init_fn,
     state_to_nn_input_fn=state_to_nn_input,
-    # testers = [
-    #     TwoPlayerBaseline(num_episodes=128, baseline_evaluator=baseline_az, render_fn=render_fn, render_dir='.', name='pretrained'),
-    #     TwoPlayerBaseline(num_episodes=128, baseline_evaluator=greedy_az, render_fn=render_fn, render_dir='.', name='greedy'),
-    # ],
-    testers = [],
+    testers = [
+        TwoPlayerBaseline(num_episodes=64, baseline_evaluator=player_ball_goal_dist_evaluator, 
+                          #render_fn=render_fn, render_dir='.', 
+                          name='player_ball_goal_dist'),
+    ],
+    #testers = [],
     #testers=[TwoPlayerTester(num_episodes=64)],
     evaluator_test = az_evaluator_test,
     data_transform_fns=transforms,
