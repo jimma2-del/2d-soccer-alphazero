@@ -1,0 +1,96 @@
+import jax.numpy as jnp
+import jax
+import numpy as np
+
+from soccer_env.game.FootballGame import FootballGame, Action, Settings
+
+from soccer_env_interface import State, PLAYERS_PER_TEAM, DT, game, state_to_nn_input
+from baselines import ball_dist_to_goal_value, closest_player_dist_to_ball_value, \
+    count_defenders_between_ball_and_goal, defenders_between_ball_and_goal_value
+
+def make_action(players_action: dict[int, tuple[tuple[int, int], int]], players=PLAYERS_PER_TEAM):
+    move = jnp.zeros((players, 2), dtype=jnp.float32)
+    kick = jnp.zeros((players), dtype=jnp.float32)
+
+    for i, action in players_action.items():
+        move = move.at[i].set(jnp.array(action[0]))
+        kick = kick.at[i].set(action[1])
+
+    return Action(move=move, kick=kick)
+
+import pygame, sys
+pygame.init()
+
+print("CONTROLS")
+print("Player 1: E S D F to Move, SHIFT to Kick")
+print("Player 1: P L SEMICOLON QUOTE to Move, RIGHT-SHIFT to Kick")
+
+FPS = round(1/DT)
+clock = pygame.time.Clock()
+
+game_state = game.reset()
+goal = 0
+
+pygame.display.set_caption("2D Football Game")
+screen = pygame.display.set_mode((game._cached_consts.window_size[1], game._cached_consts.window_size[0]))
+
+while True:
+    left_player_move_y = 0
+    left_player_move_x = 0
+
+    right_player_move_y = 0
+    right_player_move_x = 0
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            sys.exit()
+
+    keys = pygame.key.get_pressed()
+        
+    if keys[pygame.K_e]: left_player_move_y -= 1
+    if keys[pygame.K_d]: left_player_move_y += 1
+    if keys[pygame.K_s]: left_player_move_x -= 1
+    if keys[pygame.K_f]: left_player_move_x += 1
+
+    if keys[pygame.K_p]: right_player_move_y -= 1
+    if keys[pygame.K_SEMICOLON]: right_player_move_y += 1
+    if keys[pygame.K_l]: right_player_move_x -= 1
+    if keys[pygame.K_QUOTE]: right_player_move_x += 1
+
+    left_player_kick = keys[pygame.K_LSHIFT] #or keys[pygame.K_SPACE]
+    right_player_kick = keys[pygame.K_RSHIFT]
+
+    left_player_action = make_action({ 0: ((left_player_move_y, left_player_move_x), left_player_kick) })
+    right_player_action = make_action({ 0: ((right_player_move_y, right_player_move_x), right_player_kick) })
+
+    # sample from policy
+    state = State(
+        game_state = game_state,
+        cur_player_id = 1, # the policy will be the right player; the human will be left
+        prev_action = None, # unused
+        step = None,
+    )
+
+    nn_obs = state_to_nn_input(state)
+    batched_nn_obs = nn_obs[None, ...]
+
+    # ball_goal = ball_dist_to_goal_value(batched_nn_obs)
+    # player_ball = closest_player_dist_to_ball_value(batched_nn_obs)
+    # print(f"ball_goal={ball_goal} player_ball={player_ball}")
+
+    num_defenders_btw_goal, self_team_attacking = count_defenders_between_ball_and_goal(batched_nn_obs)
+    defenders_btw_goal_val = defenders_between_ball_and_goal_value(batched_nn_obs)
+    print(f"defenders_goal={num_defenders_btw_goal} attacking={self_team_attacking} defenders_goal_value={defenders_btw_goal_val}")
+
+    if goal == 0:
+        game_state, goal = game.step(game_state, left_player_action, right_player_action)
+        if goal != 0: print(goal)
+
+    #print(state.left_player_pos)
+
+    image_array = np.array(game.render(game_state, left_player_action.kick, right_player_action.kick))
+    pygame_surface = pygame.surfarray.make_surface(image_array.swapaxes(0,1))
+    screen.blit(pygame_surface, (0,0))
+    pygame.display.flip()
+
+    clock.tick(FPS)

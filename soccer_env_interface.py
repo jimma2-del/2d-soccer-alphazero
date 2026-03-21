@@ -5,7 +5,7 @@ from jax import numpy as jnp
 
 from core.types import StepMetadata
 
-PLAYERS_PER_TEAM = 1#2
+PLAYERS_PER_TEAM = 2
     # keep 1 or 2; 3 is starting to be too much
 
 N_ACTIONS = (3*3*2) ** PLAYERS_PER_TEAM
@@ -86,7 +86,10 @@ def step_fn(state: State, action):
     )
 
 def state_to_nn_input(state):
-    '''Output Shape: (2, 2*PLAYERS_PER_TEAM + 1, 2) --> ([pos, vel], [ball, *left_players, *right_players], [y, x]))'''
+    '''If current player is the right player, flip everything to make it look like left player
+    Output: abs pos, abs vel, [ pos relative to player_i for player_i in own team ]
+        Shape=(2 * (1 + 2*PLAYERS_PER_TEAM) + (1 + 2*PLAYERS_PER_TEAM - 1) * PLAYERS_PER_TEAM, 2)'''
+
     game_state = state.game_state
 
     pos = jax.lax.cond(state.cur_player_id == 0,
@@ -95,7 +98,7 @@ def state_to_nn_input(state):
             game_state.left_player_pos,
             game_state.right_player_pos,
         )),
-        lambda: jnp.vstack(( # flip left & right players if other team
+        lambda: jnp.vstack(( # flip left & right players if right team
             game_state.ball_pos,
             game_state.right_player_pos,
             game_state.left_player_pos,
@@ -105,27 +108,40 @@ def state_to_nn_input(state):
     # center pos around center of game area
     pos = pos - jnp.array(game._cached_consts.center, dtype=jnp.float32)
 
+    # normalize so field bounds/goals are +- 1 (players can go slightly beyond)
+    pos = pos / jnp.array(game.get_settings().field_size, dtype=jnp.float32) * 2
+
     vel = jax.lax.cond(state.cur_player_id == 0,
         lambda: jnp.vstack((
             game_state.ball_vel,
             game_state.left_player_vel,
             game_state.right_player_vel
         )),
-        lambda: jnp.vstack(( # flip left & right players if other team
+        lambda: jnp.vstack(( # flip left & right players if right team
             game_state.ball_vel,
             game_state.right_player_vel,
             game_state.left_player_vel
         ))
     )
 
-    comb = jnp.stack((pos, vel), axis=0)
+    # normalize; same normalization factor as position is a good heuristic for this env
+    vel = vel / jnp.array(game.get_settings().field_size, dtype=jnp.float32) * 2
 
-    # flip x-coord if on the other team
-    comb = jax.lax.cond(state.cur_player_id == 0,
-        lambda: comb, lambda: comb.at[:, :, 1].multiply(-1))
+    # flip x-coord if on the right team
+    pos, vel = jax.lax.cond(state.cur_player_id == 0,
+        lambda: (pos, vel), 
+        lambda: (pos.at[:, 1].multiply(-1), vel.at[:, 1].multiply(-1))
+    )
 
-    # normalize
-    comb = comb / jnp.array(game.get_settings().field_size, dtype=jnp.float32) * 2
+    ### RELATIVE POSITIONS ### 
+    comb = jnp.vstack((pos, vel))
+
+    for i in range(PLAYERS_PER_TEAM):
+        other_obj_pos = jnp.delete(pos, 1 + i, axis=0) # objs other than the current player
+        comb = jnp.vstack((comb, other_obj_pos - pos[1 + i]))
+
+    # clip; shouldn't be necessary, but good to have in case of extreme values/bugs
+    comb = jnp.clip(comb, -2, 2)
 
     return comb
 
@@ -143,13 +159,19 @@ for i in range(PLAYERS_PER_TEAM):
 
 def flip_y_transform_fn(mask, policy, state):
     # flip observation y-cooridinate 
+    height = game._cached_consts.window_size[0]
+    game_state = state.game_state
+
+    flip_pos_y = lambda pos: pos.at[0].set(height - pos[0])
+
     new_game_state = state.game_state.replace(
-        left_player_pos=state.game_state.left_player_pos.at[0].multiply(-1),
-        right_player_pos=state.game_state.right_player_pos.at[0].multiply(-1),
-        ball_pos=state.game_state.ball_pos.at[0].multiply(-1),
-        left_player_vel=state.game_state.left_player_vel.at[0].multiply(-1),
-        right_player_vel=state.game_state.right_player_vel.at[0].multiply(-1),
-        ball_vel=state.game_state.ball_vel.at[0].multiply(-1)
+        left_player_pos = flip_pos_y(game_state.left_player_pos),
+        right_player_pos = flip_pos_y(game_state.right_player_pos.at),
+        ball_pos = flip_pos_y(game_state.ball_pos),
+
+        left_player_vel = game_state.left_player_vel.at[0].multiply(-1),
+        right_player_vel = game_state.right_player_vel.at[0].multiply(-1),
+        ball_vel = game_state.ball_vel.at[0].multiply(-1)
     )
 
     # remap action: swap move up and move down

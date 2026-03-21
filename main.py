@@ -18,7 +18,8 @@ from os import path
 import jax
 
 from soccer_env_interface import state_to_nn_input, step_fn, init_fn, N_ACTIONS, transforms
-from baselines import ball_dist_to_goal_eval_fn, player_ball_goal_dist_eval_fn
+from baselines import make_value_eval_fn, \
+    ball_dist_to_goal_value, closest_player_dist_to_ball_value, defenders_between_ball_and_goal_value
 
 resnet = SimpleResNetMLP(
     policy_head_out_size=N_ACTIONS,
@@ -48,7 +49,15 @@ az_evaluator = make_az_evaluator(make_nn_eval_fn(resnet, state_to_nn_input), tes
 az_evaluator_test = make_az_evaluator(make_nn_eval_fn(resnet, state_to_nn_input), testing=True)
 
 # baselines
-player_ball_goal_dist_evaluator = make_az_evaluator(player_ball_goal_dist_eval_fn, testing=True)
+def heuristic_value(obs):
+    ball_goal = ball_dist_to_goal_value(obs)
+    player_ball = closest_player_dist_to_ball_value(obs)
+    defenders = defenders_between_ball_and_goal_value(obs)
+
+    return 0.5 * defenders + 0.1 * ball_goal**3 + 0.02 * player_ball**3
+        # ** n -> increasing returns
+
+player_ball_goal_dist_evaluator = make_az_evaluator(make_value_eval_fn(heuristic_value), testing=True)
 
 replay_memory = EpisodeReplayBuffer(capacity=2000)#1000)
 
